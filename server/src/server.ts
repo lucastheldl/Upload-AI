@@ -1,10 +1,9 @@
-import { fastify } from "fastify";
+import { app } from "./app";
+import { getAllPromptsRoute } from "./routes/get-all-prompts";
+import { uploadVideoRoute } from "./routes/upload-video";
 
-const app = fastify();
-
-app.get("/", () => {
-  return "hello world";
-});
+app.register(getAllPromptsRoute);
+app.register(uploadVideoRoute);
 
 app
   .listen({
