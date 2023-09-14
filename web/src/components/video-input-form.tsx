@@ -3,10 +3,11 @@ import { Button } from "./ui/button";
 import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
 import { Textarea } from "./ui/textarea";
-import { ChangeEvent, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useMemo, useRef, useState } from "react";
 
 export function VideoInputForm() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const promptInputRef = useRef<HTMLTextAreaElement>(null);
 
   function handleFileSelected(e: ChangeEvent<HTMLInputElement>) {
     const { files } = e.currentTarget;
@@ -18,6 +19,19 @@ export function VideoInputForm() {
     setVideoFile(selectedFile);
   }
 
+  function convertVideoToAudio(video: File) {}
+
+  function handleUploadVideo(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+
+    const prompt = promptInputRef.current?.value;
+
+    if (!videoFile) {
+      return;
+    }
+
+    //converter o video em audio
+  }
   const previewUrl = useMemo(() => {
     if (!videoFile) {
       return null;
@@ -27,7 +41,7 @@ export function VideoInputForm() {
   }, [videoFile]);
 
   return (
-    <form className="space-y-6">
+    <form onSubmit={handleUploadVideo} className="space-y-6">
       <label
         className="border relative flex rounded-md aspect-video cursor-pointer border-dashed text-sm flex-col gap-2 items-center justify-center text-muted-foreground hover:bg-primary/10"
         htmlFor="video"
@@ -64,6 +78,7 @@ export function VideoInputForm() {
           id="transcription_prompt"
           className="h-20 leading-relaxed resize-none"
           placeholder="Inclua palavras chave mencionadas no vídeo separadas por virgula (,)"
+          ref={promptInputRef}
         />
       </div>
 
