@@ -4,8 +4,15 @@ import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
 import { Textarea } from "./ui/textarea";
 import { ChangeEvent, FormEvent, useMemo, useRef, useState } from "react";
+import { getFFmpeg } from "@/lib/ffmpeg";
+import { fetchFile } from "@ffmpeg/util";
+import { api } from "@/lib/axios";
 
-export function VideoInputForm() {
+interface VideoInputFormProps {
+  onVideoUploaded: (id: string) => void;
+}
+
+export function VideoInputForm(props: VideoInputFormProps) {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const promptInputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -19,9 +26,42 @@ export function VideoInputForm() {
     setVideoFile(selectedFile);
   }
 
-  function convertVideoToAudio(video: File) {}
+  async function convertVideoToAudio(video: File) {
+    console.log("Convert started");
 
-  function handleUploadVideo(e: FormEvent<HTMLFormElement>) {
+    const ffmpeg = await getFFmpeg();
+
+    await ffmpeg.writeFile("input.mp4", await fetchFile(video));
+
+    //ffmpeg.on("log",log=>console.log(log))
+    ffmpeg.on("progress", (progress) =>
+      console.log("Convert progress:" + Math.round(progress.progress * 100))
+    );
+
+    await ffmpeg.exec([
+      "-i",
+      "input.mp4",
+      "-map",
+      "0:a",
+      "-b:a",
+      "20k",
+      "-acodec",
+      "libmp3lame",
+      "output.mp3",
+    ]);
+
+    const data = await ffmpeg.readFile("output.mp3");
+
+    const audioFileBlob = new Blob([data], { type: "audio/mpeg" });
+    const audioFile = new File([audioFileBlob], "audio.mp3", {
+      type: "audio/mpeg",
+    });
+    console.log("convert finished");
+
+    return audioFile;
+  }
+
+  async function handleUploadVideo(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     const prompt = promptInputRef.current?.value;
@@ -31,6 +71,22 @@ export function VideoInputForm() {
     }
 
     //converter o video em audio
+
+    const audioFile = await convertVideoToAudio(videoFile);
+
+    console.log(audioFile);
+
+    const data = new FormData();
+    data.append("file", audioFile);
+
+    const response = await api.post("/videos", data);
+
+    const videoId = response.data.video.id;
+
+    await api.post(`/videos/${videoId}/transcription`, { prompt });
+
+    props.onVideoUploaded(videoId);
+    console.log("finalizou");
   }
   const previewUrl = useMemo(() => {
     if (!videoFile) {
